@@ -1,0 +1,23 @@
+name: schluesselcheck
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Form des Claude-Schlüssels prüfen (zeigt nie den Schlüssel)
+        env:
+          T: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          echo "Länge: ${#T}"
+          echo "Beginnt mit sk-ant-oat: $([[ "$T" == sk-ant-oat* ]] && echo ja || echo nein)"
+          echo "Enthält Leerzeichen/Zeilenumbruch: $([[ "$T" =~ [[:space:]] ]] && echo ja || echo nein)"
+      - name: Kurzer Claude-Test
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          npm install -g @anthropic-ai/claude-code --no-audit --no-fund >/dev/null 2>&1
+          claude --version
+          echo "Sag nur OK" | claude -p --model claude-haiku-5-5 --tools "" --no-session-persistence --output-format json | python3 -c "import sys,json; d=json.load(sys.stdin); print('Fehler:', d.get('is_error'), '|', str(d.get('result'))[:120])"
