@@ -1,0 +1,32 @@
+name: fabrik
+on:
+  workflow_dispatch:
+
+# Immer nur ein Lauf gleichzeitig; ein weiterer wartet.
+concurrency:
+  group: fabrik
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  fabrik:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+      - name: Abhängigkeiten
+        run: npm ci --no-audit --no-fund && npm install -g @anthropic-ai/claude-code --no-audit --no-fund
+      - name: Aufträge abarbeiten
+        run: node runner.mjs
+        env:
+          FLOW_FABRIK_URL: https://bzejndghppuipnedasuv.supabase.co/functions/v1/flow-fabrik
+          FLOW_RUNNER_SCHLUESSEL: ${{ secrets.FLOW_RUNNER_SCHLUESSEL }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

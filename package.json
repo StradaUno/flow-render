@@ -1,0 +1,16 @@
+{
+  "name": "flow-render",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Runner der Meme Fabrik: führt KI- und Render-Aufträge aus. Enthält keine Daten und keine Prompts.",
+  "scripts": {
+    "start": "node runner.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "puppeteer-core": "^24.43.1"
+  }
+}
