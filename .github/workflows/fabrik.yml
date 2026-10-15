@@ -30,3 +30,4 @@ jobs:
           FLOW_FABRIK_URL: https://bzejndghppuipnedasuv.supabase.co/functions/v1/flow-fabrik
           FLOW_RUNNER_SCHLUESSEL: ${{ secrets.FLOW_RUNNER_SCHLUESSEL }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          FLOW_VERTEX_KEY: ${{ secrets.FLOW_VERTEX_KEY }}

@@ -3,6 +3,7 @@
 import puppeteer from 'puppeteer-core';
 import { kiAusfuehren } from './ki.mjs';
 import { reelBauen } from './render.mjs';
+import { poseBauen } from './pose.mjs';
 
 const URL = process.env.FLOW_FABRIK_URL;
 const SCHLUESSEL = process.env.FLOW_RUNNER_SCHLUESSEL;
@@ -53,6 +54,9 @@ async function arbeiter(nr) {
       } else if (auftrag.art === 'render') {
         browserP ??= puppeteer.launch({ executablePath: process.env.CHROME_PFAD ?? '/usr/bin/google-chrome', args: ['--no-sandbox', '--font-render-hinting=none'] });
         const d = await reelBauen(await browserP, auftrag.render);
+        await api({ aktion: 'runner_ergebnis', id: auftrag.id, ok: true, daten: d });
+      } else if (auftrag.art === 'pose') {
+        const d = await poseBauen(auftrag.pose);
         await api({ aktion: 'runner_ergebnis', id: auftrag.id, ok: true, daten: d });
       }
       console.log(`[${nr}] ${auftrag.art} ${auftrag.id.slice(0, 8)} ok (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
