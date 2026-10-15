@@ -1,10 +1,10 @@
-// Reel bauen: Figurenbild mit Zoom hin und zurück (nahtloser Loop), Textfläche 1 → 2, Musik ab Sekunde 0.
+// Reel bauen: Figurenbild mit Zoom hin und zurück (nahtloser Loop), Szene → Szene + Pointe, Musik ab Sekunde 0.
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { writeFile, readFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { textflaechePng } from './textflaeche.mjs';
+import { schriftStufe, textflaechePng } from './textflaeche.mjs';
 
 const ausfuehren = promisify(execFile);
 
@@ -30,10 +30,17 @@ export async function reelBauen(browser, a) {
     await laden(a.bild_url, join(dir, 'bild.jpg'));
     if (a.musik_url) await laden(a.musik_url, join(dir, 'musik'));
 
+    // Szene (text1) steht von Anfang an; ab wechsel_s kommt die Pointe (text2) darunter dazu
     const t2 = (a.text2 ?? '').trim();
     const wechsel = t2 ? Math.min(Math.max(a.wechsel_s || 3, 1), L - 1) : L;
-    await textflaechePng(browser, { text: a.text1, stil: a.stil, texthoehe: a.texthoehe, breite: B, hoehe: H }, join(dir, 't1.png'));
-    if (t2) await textflaechePng(browser, { text: t2, stil: a.stil, texthoehe: a.texthoehe, breite: B, hoehe: H }, join(dir, 't2.png'));
+    const stufe = schriftStufe(a.text1, t2, a.ruhig_ab ?? 18);
+    const basis = { stil: a.stil, texthoehe: a.texthoehe, breite: B, hoehe: H, ...stufe, unterkante: 0.42 };
+    if (t2) {
+      const schrift = await textflaechePng(browser, { ...basis, text: `${a.text1}\n\n${t2}` }, join(dir, 't2.png'));
+      await textflaechePng(browser, { ...basis, schrift, unterkante: 0, text: a.text1 }, join(dir, 't1.png'));
+    } else {
+      await textflaechePng(browser, { ...basis, text: a.text1 }, join(dir, 't1.png'));
+    }
 
     const args = ['-y', '-loglevel', 'error', '-loop', '1', '-framerate', String(fps), '-i', join(dir, 'bild.jpg'), '-loop', '1', '-i', join(dir, 't1.png')];
     if (t2) args.push('-loop', '1', '-i', join(dir, 't2.png'));

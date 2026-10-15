@@ -2,12 +2,23 @@
 // Maße in Prozent der Breite, damit Vorschau (klein) und Reel (groß) identisch aussehen.
 
 export const MASSE = { schrift: 5.74, zeile: 1.22, padY: 2.6, padX: 3.3, radius: 2.2, maxBreite: 88, rand: 0.28 };
+// Ruhiger Aufbau für Szene → Pointe (wie Pupazzomio): kleiner, schlichter, mehr Zeilen. Gleiche Regel wie MemeVorschau.tsx
+export const RUHIG = { schrift: 4.6, zeile: 1.3, gewicht: 600 };
+export const KLEIN = { schrift: 4.0, zeile: 1.28, gewicht: 600 };
+const woerter = (t) => String(t ?? '').trim().split(/\s+/).filter(Boolean).length;
+/** Schriftstufe aus der Wortzahl: normal · ruhig (ab X Wörtern in der Szene) · klein (über 32 Wörter gesamt) */
+export function schriftStufe(text1, text2, abWoertern = 18) {
+  const n1 = woerter(text1), n = n1 + woerter(text2);
+  if (n > 32) return { ...KLEIN, stufe: 'klein' };
+  if (n1 >= abWoertern || n > 22) return { ...RUHIG, stufe: 'ruhig' };
+  return { schrift: MASSE.schrift, zeile: MASSE.zeile, gewicht: 700, stufe: 'normal' };
+}
 
 function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-export function textflaecheHtml({ text, stil, texthoehe, breite = 1080, hoehe = 1920 }) {
+export function textflaecheHtml({ text, stil, texthoehe, breite = 1080, hoehe = 1920, schrift = MASSE.schrift, zeile = MASSE.zeile, gewicht = 700 }) {
   const px = (p) => (p * breite) / 100;
   const rand = stil.rand ? `${px(MASSE.rand)}px solid ${stil.rand}` : 'none';
   // Stil ohne Fläche: weicher Schatten statt Box
@@ -16,25 +27,37 @@ export function textflaecheHtml({ text, stil, texthoehe, breite = 1080, hoehe = 
     ? `text-shadow:0 ${px(0.3)}px ${px(1.6)}px ${stil.schatten ?? 'rgba(0,0,0,.55)'},0 0 ${px(0.6)}px ${stil.schatten ?? 'rgba(0,0,0,.55)'};box-shadow:none;`
     : `box-shadow:0 ${px(0.5)}px ${px(2)}px rgba(0,0,0,.14);`;
   return `<!doctype html><html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@700&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=block" rel="stylesheet">
 <style>
 html,body{margin:0;width:${breite}px;height:${hoehe}px;background:transparent;overflow:hidden}
 .box{position:absolute;left:50%;transform:translateX(-50%);top:${(texthoehe * 100).toFixed(2)}%;
   max-width:${MASSE.maxBreite}%;width:max-content;box-sizing:border-box;
   background:${ohneFlaeche ? 'transparent' : stil.box};color:${stil.fg};border:${rand};border-radius:${px(MASSE.radius)}px;
-  padding:${px(MASSE.padY)}px ${px(MASSE.padX)}px;font-family:Inter,sans-serif;font-weight:700;
-  font-size:${px(MASSE.schrift)}px;line-height:${MASSE.zeile};text-align:center;letter-spacing:-0.01em;
+  padding:${px(MASSE.padY)}px ${px(MASSE.padX)}px;font-family:Inter,sans-serif;font-weight:${gewicht};
+  font-size:${px(schrift)}px;line-height:${zeile};text-align:center;letter-spacing:-0.01em;white-space:pre-line;
   ${schatten}overflow-wrap:break-word}
 </style></head><body><div class="box">${esc(text)}</div></body></html>`;
 }
 
 export async function textflaechePng(browser, opts, ziel) {
   const page = await browser.newPage();
+  let fs = null;
   try {
     await page.setViewport({ width: opts.breite ?? 1080, height: opts.hoehe ?? 1920, deviceScaleFactor: 1 });
     await page.setContent(textflaecheHtml(opts), { waitUntil: 'networkidle0', timeout: 30000 });
     await page.evaluate(() => document.fonts.ready);
+    // Sicherheitsnetz: ragt der Text über die obere Textfläche hinaus, Schrift schrittweise verkleinern
+    if (opts.unterkante) {
+      fs = await page.evaluate((grenze) => {
+        const box = document.querySelector('.box');
+        let f = parseFloat(getComputedStyle(box).fontSize);
+        for (let i = 0; i < 8 && box.getBoundingClientRect().bottom > grenze; i++) { f *= 0.93; box.style.fontSize = f + 'px'; }
+        return f;
+      }, opts.unterkante * (opts.hoehe ?? 1920));
+    }
     await page.screenshot({ path: ziel, omitBackground: true, type: 'png' });
+    // tatsächliche Schriftgröße in % der Breite (damit die Szene allein gleich groß bleibt)
+    return fs ? (fs * 100) / (opts.breite ?? 1080) : (opts.schrift ?? MASSE.schrift);
   } finally {
     await page.close();
   }
