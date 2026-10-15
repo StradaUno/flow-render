@@ -31,7 +31,7 @@ async function api(body) {
 
 const schlaf = (ms) => new Promise((r) => setTimeout(r, ms));
 const start = Date.now();
-let browser;
+let browserP; // ein gemeinsamer Browser für alle Arbeiter
 
 async function arbeiter(nr) {
   let leer = 0;
@@ -51,8 +51,8 @@ async function arbeiter(nr) {
         const e = await kiAusfuehren(auftrag.ki);
         await api({ aktion: 'runner_ergebnis', id: auftrag.id, ok: true, daten: e.daten, nutzung: e.nutzung });
       } else if (auftrag.art === 'render') {
-        browser ??= await puppeteer.launch({ executablePath: process.env.CHROME_PFAD ?? '/usr/bin/google-chrome', args: ['--no-sandbox', '--font-render-hinting=none'] });
-        const d = await reelBauen(browser, auftrag.render);
+        browserP ??= puppeteer.launch({ executablePath: process.env.CHROME_PFAD ?? '/usr/bin/google-chrome', args: ['--no-sandbox', '--font-render-hinting=none'] });
+        const d = await reelBauen(await browserP, auftrag.render);
         await api({ aktion: 'runner_ergebnis', id: auftrag.id, ok: true, daten: d });
       }
       console.log(`[${nr}] ${auftrag.art} ${auftrag.id.slice(0, 8)} ok (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
@@ -66,7 +66,7 @@ async function arbeiter(nr) {
 try {
   await Promise.all(Array.from({ length: PARALLEL }, (_, i) => arbeiter(i + 1)));
 } finally {
-  await browser?.close().catch(() => {});
+  if (browserP) await (await browserP).close().catch(() => {});
   await api({ aktion: 'runner_ende' }).catch(() => {});
   console.log(`Fertig nach ${((Date.now() - start) / 1000).toFixed(0)} s`);
 }
