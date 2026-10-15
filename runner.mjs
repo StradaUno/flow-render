@@ -4,6 +4,7 @@ import puppeteer from 'puppeteer-core';
 import { kiAusfuehren } from './ki.mjs';
 import { reelBauen } from './render.mjs';
 import { poseBauen } from './pose.mjs';
+import { bildBauen } from './bild.mjs';
 
 const URL = process.env.FLOW_FABRIK_URL;
 const SCHLUESSEL = process.env.FLOW_RUNNER_SCHLUESSEL;
@@ -54,6 +55,9 @@ async function arbeiter(nr) {
       } else if (auftrag.art === 'render') {
         browserP ??= puppeteer.launch({ executablePath: process.env.CHROME_PFAD ?? '/usr/bin/google-chrome', args: ['--no-sandbox', '--font-render-hinting=none'] });
         const d = await reelBauen(await browserP, auftrag.render);
+        await api({ aktion: 'runner_ergebnis', id: auftrag.id, ok: true, daten: d });
+      } else if (auftrag.art === 'bild') {
+        const d = await bildBauen(auftrag.bild);
         await api({ aktion: 'runner_ergebnis', id: auftrag.id, ok: true, daten: d });
       } else if (auftrag.art === 'pose') {
         const d = await poseBauen(auftrag.pose);

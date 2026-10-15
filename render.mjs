@@ -49,8 +49,10 @@ export async function reelBauen(browser, a) {
     else args.push('-f', 'lavfi', '-t', String(L), '-i', 'anullsrc=r=44100:cl=stereo');
 
     // Zoom: weich hinein bis zur Hälfte der Laufzeit, dann zurück → erstes = letztes Bild (Loop)
-    const z = `1+${(zmax - 1).toFixed(4)}*(1-cos(2*PI*on/${frames}))/2`;
-    let f = `[0:v]scale=${B * 2}:${H * 2}:force_original_aspect_ratio=increase,crop=${B * 2}:${H * 2},` +
+    // zoom_raus: beginnt nah und fährt erst heraus (Abwechslung bei wiederholten Bildern)
+    const welle = `(1-cos(2*PI*on/${frames}))/2`;
+    const z = a.zoom_raus ? `${zmax.toFixed(4)}-${(zmax - 1).toFixed(4)}*${welle}` : `1+${(zmax - 1).toFixed(4)}*${welle}`;
+    let f = `[0:v]${a.spiegeln ? 'hflip,' : ''}scale=${B * 2}:${H * 2}:force_original_aspect_ratio=increase,crop=${B * 2}:${H * 2},` +
       `zoompan=z='${z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${B}x${H}:fps=${fps},setsar=1[bg];` +
       `[bg][1:v]overlay=0:0:enable='lt(t,${wechsel})'[v1]`;
     if (t2) f += `;[v1][2:v]overlay=0:0:enable='gte(t,${wechsel})'[v]`;
