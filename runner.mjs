@@ -12,8 +12,9 @@ const PARALLEL = Number(process.env.FLOW_PARALLEL ?? 4);
 const MAX_LAUFZEIT = 30 * 60 * 1000;
 const LEER_WARTEN = 5000;
 // Vorgewärmt (noch nichts zu tun): bis zu 6 Minuten bereit bleiben; nach getaner Arbeit: 60 s auf weitere Aufträge warten
-const LEER_RUNDEN_START = 72, LEER_RUNDEN = 12;
-let schonGearbeitet = false;
+// Ein Arbeiter hört erst auf, wenn ALLE nichts mehr zu tun haben (sonst bleibt bei langen Aufträgen nur einer übrig)
+const LEER_START_MS = 6 * 60 * 1000, LEER_MS = 60 * 1000;
+let schonGearbeitet = false, beschaeftigt = 0, letzteArbeit = Date.now();
 
 if (!URL || !SCHLUESSEL) { console.error('FLOW_FABRIK_URL / FLOW_RUNNER_SCHLUESSEL fehlen'); process.exit(1); }
 
@@ -36,17 +37,17 @@ const start = Date.now();
 let browserP; // ein gemeinsamer Browser für alle Arbeiter
 
 async function arbeiter(nr) {
-  let leer = 0;
   while (Date.now() - start < MAX_LAUFZEIT) {
     const { auftrag } = await api({ aktion: 'runner_naechster' });
     if (!auftrag) {
-      if (++leer >= (schonGearbeitet ? LEER_RUNDEN : LEER_RUNDEN_START)) return;
+      if (beschaeftigt === 0 && Date.now() - letzteArbeit > (schonGearbeitet ? LEER_MS : LEER_START_MS)) return;
       await schlaf(LEER_WARTEN);
       continue;
     }
-    leer = 0;
     schonGearbeitet = true;
+    letzteArbeit = Date.now();
     if (auftrag.art === 'uebersprungen') continue;
+    beschaeftigt++;
     const t0 = Date.now();
     try {
       if (auftrag.art === 'ki') {
@@ -68,6 +69,8 @@ async function arbeiter(nr) {
       console.log(`[${nr}] ${auftrag.art} ${auftrag.id.slice(0, 8)} Fehler`);
       await api({ aktion: 'runner_ergebnis', id: auftrag.id, ok: false, fehler: String(e?.message ?? e).slice(0, 500) }).catch(() => {});
     }
+    beschaeftigt--;
+    letzteArbeit = Date.now();
   }
 }
 
