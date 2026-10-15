@@ -13,16 +13,18 @@ async function hochladen(signedUrl, datei, typ) {
   if (!r.ok) throw new Error(`Upload ${r.status}`);
 }
 
-/** a: { prompt, vorlagen_urls, modell, pruef_modell, ort, szene_text, versuche, upload: { bild, klein } } */
+/** a: { prompt, vorlagen_urls, pruef_vorlage_url?, modell, pruef_modell, ort, szene_text, versuche, upload: { bild, klein } } */
 export async function bildBauen(a) {
   const vorlagen = await Promise.all(a.vorlagen_urls.map(bildTeil));
+  // Prüf-Test: Bild ohne Vorlage erzeugen, aber gegen die echte Figur prüfen (muss abgelehnt werden)
+  const pruefVorlage = a.pruef_vorlage_url ? await bildTeil(a.pruef_vorlage_url) : vorlagen[0];
   const protokoll = [];
   let roh = null;
   for (let v = 1; v <= (a.versuche ?? 2); v++) {
     let kandidat;
     try { kandidat = await bildErzeugen({ prompt: a.prompt, vorlagen, modell: a.modell, ort: a.ort }); }
     catch (e) { protokoll.push({ versuch: v, erzeugt: false, grund: String(e?.message ?? e).slice(0, 200) }); continue; }
-    const p = await bildPruefen({ bild: kandidat, vorlage: vorlagen[0], szene: a.szene_text, modell: a.pruef_modell, ort: a.ort })
+    const p = await bildPruefen({ bild: kandidat, vorlage: pruefVorlage, szene: a.szene_text, modell: a.pruef_modell, ort: a.ort })
       .catch((e) => ({ ok: false, grund: `Prüfung fehlgeschlagen: ${String(e?.message ?? e).slice(0, 150)}` }));
     protokoll.push({ versuch: v, erzeugt: true, ok: !!p.ok, grund: p.grund ?? '' });
     if (p.ok) { roh = kandidat; break; }
