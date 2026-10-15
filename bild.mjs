@@ -7,13 +7,14 @@ import { join } from 'node:path';
 import { bildErzeugen, bildPruefen, bildTeil } from './vertex.mjs';
 
 const run = promisify(execFile);
+const MASSE = { '9:16': [1080, 1920], '1:1': [1080, 1080], '16:9': [1920, 1080] };
 
 async function hochladen(signedUrl, datei, typ) {
   const r = await fetch(signedUrl, { method: 'PUT', headers: { 'Content-Type': typ, 'x-upsert': 'true' }, body: await readFile(datei) });
   if (!r.ok) throw new Error(`Upload ${r.status}`);
 }
 
-/** a: { prompt, vorlagen_urls, pruef_vorlage_url?, modell, pruef_modell, ort, szene_text, versuche, upload: { bild, klein } } */
+/** a: { prompt, vorlagen_urls, pruef_vorlage_url?, format?, pruef_modus?, modell, pruef_modell, ort, szene_text, versuche, upload: { bild, klein } } */
 export async function bildBauen(a) {
   const vorlagen = await Promise.all(a.vorlagen_urls.map(bildTeil));
   // Prüf-Test: Bild ohne Vorlage erzeugen, aber gegen die echte Figur prüfen (muss abgelehnt werden)
@@ -22,10 +23,12 @@ export async function bildBauen(a) {
   let roh = null;
   for (let v = 1; v <= (a.versuche ?? 2); v++) {
     let kandidat;
-    try { kandidat = await bildErzeugen({ prompt: a.prompt, vorlagen, modell: a.modell, ort: a.ort }); }
+    try { kandidat = await bildErzeugen({ prompt: a.prompt, vorlagen, modell: a.modell, ort: a.ort, format: a.format ?? '9:16' }); }
     catch (e) { protokoll.push({ versuch: v, erzeugt: false, grund: String(e?.message ?? e).slice(0, 200) }); continue; }
-    const p = await bildPruefen({ bild: kandidat, vorlage: pruefVorlage, szene: a.szene_text, modell: a.pruef_modell, ort: a.ort })
-      .catch((e) => ({ ok: false, grund: `Prüfung fehlgeschlagen: ${String(e?.message ?? e).slice(0, 150)}` }));
+    // Ohne jede Vorlage (realistischer Avatar ohne Vorschau) gibt es nichts zu vergleichen
+    const p = !pruefVorlage ? { ok: true, grund: 'ohne Vorlage' }
+      : await bildPruefen({ bild: kandidat, vorlage: pruefVorlage, szene: a.szene_text, modell: a.pruef_modell, ort: a.ort, modus: a.pruef_modus ?? 'szene' })
+        .catch((e) => ({ ok: false, grund: `Prüfung fehlgeschlagen: ${String(e?.message ?? e).slice(0, 150)}` }));
     protokoll.push({ versuch: v, erzeugt: true, ok: !!p.ok, grund: p.grund ?? '' });
     if (p.ok) { roh = kandidat; break; }
   }
@@ -35,7 +38,8 @@ export async function bildBauen(a) {
   try {
     const ein = join(ordner, 'roh.png'), gross = join(ordner, 'bild.webp'), klein = join(ordner, 'klein.webp');
     await writeFile(ein, roh);
-    await run('ffmpeg', ['-y', '-loglevel', 'error', '-i', ein, '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920', '-c:v', 'libwebp', '-quality', '86', gross]);
+    const [bw, bh] = MASSE[a.format ?? '9:16'] ?? MASSE['9:16'];
+    await run('ffmpeg', ['-y', '-loglevel', 'error', '-i', ein, '-vf', `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`, '-c:v', 'libwebp', '-quality', '86', gross]);
     await run('ffmpeg', ['-y', '-loglevel', 'error', '-i', gross, '-vf', 'scale=360:-2', '-c:v', 'libwebp', '-quality', '80', klein]);
     await hochladen(a.upload.bild.signedUrl, gross, 'image/webp');
     await hochladen(a.upload.klein.signedUrl, klein, 'image/webp');

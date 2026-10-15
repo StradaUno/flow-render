@@ -3,8 +3,8 @@
 import puppeteer from 'puppeteer-core';
 import { kiAusfuehren } from './ki.mjs';
 import { reelBauen } from './render.mjs';
-import { poseBauen } from './pose.mjs';
 import { bildBauen } from './bild.mjs';
+import { batchStarten, batchHolen } from './batch.mjs';
 
 const URL = process.env.FLOW_FABRIK_URL;
 const SCHLUESSEL = process.env.FLOW_RUNNER_SCHLUESSEL;
@@ -60,8 +60,8 @@ async function arbeiter(nr) {
       } else if (auftrag.art === 'bild') {
         const d = await bildBauen(auftrag.bild);
         await api({ aktion: 'runner_ergebnis', id: auftrag.id, ok: true, daten: d });
-      } else if (auftrag.art === 'pose') {
-        const d = await poseBauen(auftrag.pose);
+      } else if (auftrag.art === 'bild_batch') {
+        const d = auftrag.batch.job ? await batchHolen(auftrag.batch) : await batchStarten(auftrag.batch);
         await api({ aktion: 'runner_ergebnis', id: auftrag.id, ok: true, daten: d });
       }
       console.log(`[${nr}] ${auftrag.art} ${auftrag.id.slice(0, 8)} ok (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
