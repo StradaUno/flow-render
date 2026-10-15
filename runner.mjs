@@ -6,9 +6,12 @@ import { reelBauen } from './render.mjs';
 
 const URL = process.env.FLOW_FABRIK_URL;
 const SCHLUESSEL = process.env.FLOW_RUNNER_SCHLUESSEL;
-const PARALLEL = Number(process.env.FLOW_PARALLEL ?? 3);
+const PARALLEL = Number(process.env.FLOW_PARALLEL ?? 4);
 const MAX_LAUFZEIT = 30 * 60 * 1000;
-const LEER_WARTEN = 15000, LEER_RUNDEN = 4; // bis zu 60 s auf weitere Aufträge warten (sammeln)
+const LEER_WARTEN = 5000;
+// Vorgewärmt (noch nichts zu tun): bis zu 6 Minuten bereit bleiben; nach getaner Arbeit: 60 s auf weitere Aufträge warten
+const LEER_RUNDEN_START = 72, LEER_RUNDEN = 12;
+let schonGearbeitet = false;
 
 if (!URL || !SCHLUESSEL) { console.error('FLOW_FABRIK_URL / FLOW_RUNNER_SCHLUESSEL fehlen'); process.exit(1); }
 
@@ -35,11 +38,12 @@ async function arbeiter(nr) {
   while (Date.now() - start < MAX_LAUFZEIT) {
     const { auftrag } = await api({ aktion: 'runner_naechster' });
     if (!auftrag) {
-      if (++leer >= LEER_RUNDEN) return;
+      if (++leer >= (schonGearbeitet ? LEER_RUNDEN : LEER_RUNDEN_START)) return;
       await schlaf(LEER_WARTEN);
       continue;
     }
     leer = 0;
+    schonGearbeitet = true;
     if (auftrag.art === 'uebersprungen') continue;
     const t0 = Date.now();
     try {
