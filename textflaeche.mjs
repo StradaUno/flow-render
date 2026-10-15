@@ -10,16 +10,21 @@ function esc(s) {
 export function textflaecheHtml({ text, stil, texthoehe, breite = 1080, hoehe = 1920 }) {
   const px = (p) => (p * breite) / 100;
   const rand = stil.rand ? `${px(MASSE.rand)}px solid ${stil.rand}` : 'none';
+  // Stil ohne Fläche: weicher Schatten statt Box
+  const ohneFlaeche = stil.box === 'transparent' || !!stil.schatten;
+  const schatten = ohneFlaeche
+    ? `text-shadow:0 ${px(0.3)}px ${px(1.6)}px ${stil.schatten ?? 'rgba(0,0,0,.55)'},0 0 ${px(0.6)}px ${stil.schatten ?? 'rgba(0,0,0,.55)'};box-shadow:none;`
+    : `box-shadow:0 ${px(0.5)}px ${px(2)}px rgba(0,0,0,.14);`;
   return `<!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700&display=block" rel="stylesheet">
 <style>
 html,body{margin:0;width:${breite}px;height:${hoehe}px;background:transparent;overflow:hidden}
 .box{position:absolute;left:50%;transform:translateX(-50%);top:${(texthoehe * 100).toFixed(2)}%;
   max-width:${MASSE.maxBreite}%;width:max-content;box-sizing:border-box;
-  background:${stil.box};color:${stil.fg};border:${rand};border-radius:${px(MASSE.radius)}px;
+  background:${ohneFlaeche ? 'transparent' : stil.box};color:${stil.fg};border:${rand};border-radius:${px(MASSE.radius)}px;
   padding:${px(MASSE.padY)}px ${px(MASSE.padX)}px;font-family:Inter,sans-serif;font-weight:700;
   font-size:${px(MASSE.schrift)}px;line-height:${MASSE.zeile};text-align:center;letter-spacing:-0.01em;
-  box-shadow:0 ${px(0.5)}px ${px(2)}px rgba(0,0,0,.14);overflow-wrap:break-word}
+  ${schatten}overflow-wrap:break-word}
 </style></head><body><div class="box">${esc(text)}</div></body></html>`;
 }
 
