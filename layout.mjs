@@ -3,16 +3,16 @@
 //  kurz (< 18 Wörter): fett, Start 66 px, in 2er-Schritten kleiner bis die längste Zeile in 74 % passt (min. 40 px),
 //                      Zeilen aus dem Spruch (\n), zu lange Zeilen zwischen Wörtern umbrechen (max. 5 Zeilen),
 //                      Text mittig zwischen 13 % und 40 % der Höhe.
-//  lang (ab 18 Wörtern): mittel, Start 50 px (min. 34 px), Umbruch auf 80 % der Breite, Absätze bleiben, Text oben ab 8 %.
+//  lang (ab 18 Wörtern): mittel, Start 50 px (min. 34 px), Umbruch auf 80 % der Breite, Absätze bleiben, Text oben ab 13 % (Instagram-Sicherheitszone).
 // Szene → Pointe: Größe und Lage richten sich nach dem vollen Text, die Szene allein steht an derselben Stelle.
 
 export const B = 1080, H = 1920;
 export const AUFBAU = {
   grenzeWoerter: 18,
   kurz: { start: 66, min: 40, schritt: 2, breite: 0.74, oben: 0.13, unten: 0.40, zeile: 1.22, maxZeilen: 5 },
-  lang: { start: 50, min: 34, schritt: 2, breite: 0.80, oben: 0.08, unten: 0.44, zeile: 1.32 },
+  lang: { start: 50, min: 34, schritt: 2, breite: 0.80, oben: 0.13, unten: 0.44, zeile: 1.32 }, // oben 13 %: Instagram-Leiste + 3:4-Profilraster
   // Platz über der Figur: Text endet mind. 3 % über dem Kopf; reicht das nicht, wird das Bild kleiner (unten verankert, min. 72 %)
-  figur: { abstand: 0.03, minUnten: 0.24, minSkala: 0.72, messBreite: 120 },
+  figur: { abstand: 0.03, minUnten: 0.30, minSkala: 0.72, messBreite: 120 },
   // Branding unter der Figur: @pazziflow und darunter @Account, klein und halbtransparent (wie bei Meme-Accounts)
   handle: { px: 34, y: 0.872, zeile: 1.3, farbe: '#8A735F', deckkraft: 0.55, marke: 'pazziflow' },
 };
