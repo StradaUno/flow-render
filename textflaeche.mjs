@@ -3,7 +3,7 @@
 import { readFile } from 'node:fs/promises';
 import { AUFBAU, B, H } from './layout.mjs';
 
-const FONTS = 'https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Nunito:wght@600;800&family=Inter:wght@500;700&display=block';
+const FONTS = 'https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Nunito:wght@600;800&family=Inter:wght@500;700&family=Fredoka:wght@500;600&family=Anton&display=block';
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 function seite(fontFamilie) {
