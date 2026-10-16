@@ -40,13 +40,31 @@ export function figurOben(pixel, b, h) {
   let r = 0, g = 0, bl = 0, n = 0;
   for (let y = 0; y < 3; y++) for (let x = 0; x < b; x++) { const i = p(x, y); r += pixel[i]; g += pixel[i + 1]; bl += pixel[i + 2]; n++; }
   r /= n; g /= n; bl /= n;
+  // Einfarbig? (mittlere Abweichung der obersten Zeilen klein) – sonst ist die Messung nicht verlässlich
+  let abw = 0;
+  for (let y = 0; y < 3; y++) for (let x = 0; x < b; x++) { const i = p(x, y); abw += Math.abs(pixel[i] - r) + Math.abs(pixel[i + 1] - g) + Math.abs(pixel[i + 2] - bl); }
+  const einheitlich = abw / n < 18;
   let frei = 1;
   for (let y = 3; y < h; y++) {
     let anders = 0;
     for (let x = 0; x < b; x++) { const i = p(x, y); if (Math.abs(pixel[i] - r) + Math.abs(pixel[i + 1] - g) + Math.abs(pixel[i + 2] - bl) > 60) anders++; }
     if (anders > b * 0.02) { frei = y / h; break; }
   }
-  return { frei, farbe: `rgb(${Math.round(r)},${Math.round(g)},${Math.round(bl)})` };
+  return { frei, einheitlich, farbe: `rgb(${Math.round(r)},${Math.round(g)},${Math.round(bl)})` };
+}
+
+/** Wie das Bild ins Hochformat kommt: 9:16-Bilder füllen (cover); breitere Bilder mit einfarbigem Hintergrund (z. B. das
+ *  quadratische Hauptbild) stehen in voller Breite unten, oben wird mit der Hintergrundfarbe aufgefüllt.
+ *  Liefert frei (Anteil der Reel-Höhe über der Figur; 1 = unbekannt) und den Modus. */
+export function bildAufbau(m, iw, ih) {
+  const seite = iw / ih, ziel = B / H;
+  if (!m.einheitlich) return { modus: 'cover', frei: 1 };
+  if (seite > ziel * 1.05) {
+    const hoehe = (B * ih / iw) / H;
+    return { modus: 'unten', frei: 1 - hoehe * (1 - m.frei) };
+  }
+  const sichtbar = Math.min(1, seite / ziel);
+  return { modus: 'cover', frei: Math.max(0, (m.frei - (1 - sichtbar) / 2) / sichtbar) };
 }
 
 /**
@@ -67,9 +85,9 @@ export function textAufbau(text1, text2, schrift, messen, frei = 1) {
     const z2 = t2 ? absaetze(t2).flatMap((z) => (kurz && messen(z, px, gewicht) <= maxB) ? [z] : umbrechen(z, px, gewicht, maxB, messen)) : [];
     return { z1, alle: t2 ? [...z1, '', ...z2] : z1 };
   };
-  // Unterkante: Standard, aber nicht in die Figur hinein (frei < 12 % = Bild nicht messbar → Standard)
+  // Unterkante: Standard, aber nicht in die Figur hinein (frei = 1: Bild nicht messbar → Standard)
   const F = AUFBAU.figur;
-  const messbar = frei >= 0.12 && frei < 1;
+  const messbar = frei < 1;
   const unten = messbar ? Math.max(Math.min(A.unten, frei - F.abstand), F.minUnten) : A.unten;
   const raum = (unten - A.oben) * H;
   let px = A.start, z = bauen(px);

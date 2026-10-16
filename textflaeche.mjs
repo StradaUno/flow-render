@@ -24,7 +24,7 @@ export async function textflaechenBauen(browser, a, dir) {
     await page.evaluate(() => document.fonts.ready);
     // Layout-Code in die Seite laden und dort mit echter Schrift messen
     const code = (await readFile(new URL('./layout.mjs', import.meta.url), 'utf8')).replace(/^export /gm, '');
-    await page.addScriptTag({ content: `${code}\nwindow.textAufbau = textAufbau; window.figurOben = figurOben; window.AUFBAU = AUFBAU;` });
+    await page.addScriptTag({ content: `${code}\nwindow.textAufbau = textAufbau; window.figurOben = figurOben; window.bildAufbau = bildAufbau; window.AUFBAU = AUFBAU;` });
     const bildDaten = a.bild ? `data:image/jpeg;base64,${(await readFile(a.bild)).toString('base64')}` : null;
     const lay = await page.evaluate(async (t1, t2, schrift, bild) => {
       const c = document.createElement('canvas').getContext('2d');
@@ -36,11 +36,10 @@ export async function textflaechenBauen(browser, a, dir) {
         const k = document.createElement('canvas'); k.width = b; k.height = h;
         const ctx = k.getContext('2d', { willReadFrequently: true }); ctx.drawImage(img, 0, 0, b, h);
         const m = window.figurOben(ctx.getImageData(0, 0, b, h).data, b, h);
-        // Bild füllt 9:16 (cover): wie in der App umrechnen
-        const sichtbar = Math.min(1, (img.naturalWidth / img.naturalHeight) / (1080 / 1920));
-        figur = { frei: Math.max(0, (m.frei - (1 - sichtbar) / 2) / sichtbar), farbe: m.farbe };
+        const auf = window.bildAufbau(m, img.naturalWidth, img.naturalHeight);
+        figur = { frei: auf.frei, farbe: m.farbe, modus: auf.modus };
       }
-      return { ...window.textAufbau(t1, t2, schrift, messen, figur?.frei ?? 1), farbe: figur?.farbe ?? null };
+      return { ...window.textAufbau(t1, t2, schrift, messen, figur?.frei ?? 1), farbe: figur?.farbe ?? null, modus: figur?.modus ?? 'cover' };
     }, a.text1, a.text2 ?? '', a.schrift, bildDaten);
 
     const s = a.stil;
@@ -56,7 +55,7 @@ export async function textflaechenBauen(browser, a, dir) {
     const t1 = `${dir}/t1.png`, t2 = `${dir}/t2.png`;
     await zeichnen(lay.zeilen1, t1);
     if ((a.text2 ?? '').trim()) await zeichnen(lay.zeilen, t2);
-    return { t1, t2: (a.text2 ?? '').trim() ? t2 : null, skala: lay.skala ?? 1, farbe: lay.farbe };
+    return { t1, t2: (a.text2 ?? '').trim() ? t2 : null, skala: lay.skala ?? 1, farbe: lay.farbe, modus: lay.modus };
   } finally {
     await page.close();
   }
