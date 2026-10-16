@@ -14,7 +14,8 @@ function seite(fontFamilie) {
 </head><body><span style="font-family:'${fontFamilie}';font-weight:500">.</span><span style="font-family:'${fontFamilie}';font-weight:700">.</span><span style="font-family:'${fontFamilie}';font-weight:800">.</span></body></html>`;
 }
 
-/** a: { text1, text2, stil, schrift: {familie, kurz, lang}, handle? } → { t1, t2 } (Dateipfade) */
+/** a: { text1, text2, stil, schrift: {familie, kurz, lang}, handle?, marke?, bild? (Pfad) } → { t1, t2, skala, farbe }
+ *  Mit Bild: freien Platz über der Figur messen (wie die App), Text darin einpassen, notfalls skala < 1 fürs Bild. */
 export async function textflaechenBauen(browser, a, dir) {
   const page = await browser.newPage();
   try {
@@ -23,12 +24,24 @@ export async function textflaechenBauen(browser, a, dir) {
     await page.evaluate(() => document.fonts.ready);
     // Layout-Code in die Seite laden und dort mit echter Schrift messen
     const code = (await readFile(new URL('./layout.mjs', import.meta.url), 'utf8')).replace(/^export /gm, '');
-    await page.addScriptTag({ content: `${code}\nwindow.textAufbau = textAufbau;` });
-    const lay = await page.evaluate((t1, t2, schrift) => {
+    await page.addScriptTag({ content: `${code}\nwindow.textAufbau = textAufbau; window.figurOben = figurOben; window.AUFBAU = AUFBAU;` });
+    const bildDaten = a.bild ? `data:image/jpeg;base64,${(await readFile(a.bild)).toString('base64')}` : null;
+    const lay = await page.evaluate(async (t1, t2, schrift, bild) => {
       const c = document.createElement('canvas').getContext('2d');
       const messen = (text, px, gewicht) => { c.font = `${gewicht} ${px}px '${schrift.familie}', sans-serif`; return c.measureText(text).width; };
-      return window.textAufbau(t1, t2, schrift, messen);
-    }, a.text1, a.text2 ?? '', a.schrift);
+      let figur = null;
+      if (bild) {
+        const img = new Image(); img.src = bild; await img.decode();
+        const b = window.AUFBAU.figur.messBreite, h = Math.round(b * (img.naturalHeight / img.naturalWidth));
+        const k = document.createElement('canvas'); k.width = b; k.height = h;
+        const ctx = k.getContext('2d', { willReadFrequently: true }); ctx.drawImage(img, 0, 0, b, h);
+        const m = window.figurOben(ctx.getImageData(0, 0, b, h).data, b, h);
+        // Bild füllt 9:16 (cover): wie in der App umrechnen
+        const sichtbar = Math.min(1, (img.naturalWidth / img.naturalHeight) / (1080 / 1920));
+        figur = { frei: Math.max(0, (m.frei - (1 - sichtbar) / 2) / sichtbar), farbe: m.farbe };
+      }
+      return { ...window.textAufbau(t1, t2, schrift, messen, figur?.frei ?? 1), farbe: figur?.farbe ?? null };
+    }, a.text1, a.text2 ?? '', a.schrift, bildDaten);
 
     const s = a.stil;
     const ohneFlaeche = s.box === 'transparent' || !!s.schatten;
@@ -43,7 +56,7 @@ export async function textflaechenBauen(browser, a, dir) {
     const t1 = `${dir}/t1.png`, t2 = `${dir}/t2.png`;
     await zeichnen(lay.zeilen1, t1);
     if ((a.text2 ?? '').trim()) await zeichnen(lay.zeilen, t2);
-    return { t1, t2: (a.text2 ?? '').trim() ? t2 : null };
+    return { t1, t2: (a.text2 ?? '').trim() ? t2 : null, skala: lay.skala ?? 1, farbe: lay.farbe };
   } finally {
     await page.close();
   }
