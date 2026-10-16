@@ -11,7 +11,8 @@ export const AUFBAU = {
   grenzeWoerter: 18,
   kurz: { start: 66, min: 40, schritt: 2, breite: 0.74, oben: 0.13, unten: 0.40, zeile: 1.22, maxZeilen: 5 },
   lang: { start: 50, min: 34, schritt: 2, breite: 0.80, oben: 0.08, unten: 0.44, zeile: 1.32 },
-  handle: { px: 40, y: 0.885, farbe: '#8A735F' },
+  // Branding unter der Figur: @pazziflow und darunter @Account, klein und halbtransparent (wie bei Meme-Accounts)
+  handle: { px: 34, y: 0.872, zeile: 1.3, farbe: '#8A735F', deckkraft: 0.55, marke: 'pazziflow' },
 };
 
 const woerter = (t) => String(t ?? '').trim().split(/\s+/).filter(Boolean).length;
