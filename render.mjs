@@ -35,7 +35,7 @@ export async function reelBauen(browser, a) {
     const wechsel = t2 ? Math.min(Math.max(a.wechsel_s || 3, 1), L - 1) : L;
     // Textaufbau wie Pupazzomio: Größe/Lage aus dem vollen Text, Szene allein an derselben Stelle
     const schrift = a.schrift ?? { familie: 'Poppins', kurz: 700, lang: 500 };
-    await textflaechenBauen(browser, { text1: a.text1, text2: t2, stil: a.stil, schrift, handle: a.handle ?? null }, dir);
+    await textflaechenBauen(browser, { text1: a.text1, text2: t2, stil: a.stil, schrift, handle: a.handle ?? null, marke: a.marke }, dir);
 
     const args = ['-y', '-loglevel', 'error', '-loop', '1', '-framerate', String(fps), '-i', join(dir, 'bild.jpg'), '-loop', '1', '-i', join(dir, 't1.png')];
     if (t2) args.push('-loop', '1', '-i', join(dir, 't2.png'));

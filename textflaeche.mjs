@@ -36,7 +36,7 @@ export async function textflaechenBauen(browser, a, dir) {
     const box = ohneFlaeche ? 'padding:0' : `background:${s.box};padding:28px 36px;border-radius:24px;${s.rand ? `border:3px solid ${s.rand};` : ''}box-shadow:0 6px 22px rgba(0,0,0,.14)`;
     const zeichnen = async (zeilen, ziel) => {
       await page.evaluate((html) => { document.body.innerHTML = html; }, `<div class="box" style="top:${lay.top}px;font-size:${lay.px}px;line-height:${lay.zeile};font-weight:${lay.gewicht};color:${s.fg};${schatten}${box}">${esc(zeilen.join('\n'))}</div>`
-        + `<div class="handle" style="top:${AUFBAU.handle.y * H}px;font-size:${AUFBAU.handle.px}px;line-height:${AUFBAU.handle.zeile};color:${AUFBAU.handle.farbe};opacity:${AUFBAU.handle.deckkraft};white-space:pre">${esc(['@' + AUFBAU.handle.marke, a.handle ? '@' + a.handle : ''].filter(Boolean).join('\n'))}</div>`);
+        + (a.marke === false && !a.handle ? '' : `<div class="handle" style="top:${AUFBAU.handle.y * H}px;font-size:${AUFBAU.handle.px}px;line-height:${AUFBAU.handle.zeile};color:${AUFBAU.handle.farbe};opacity:${AUFBAU.handle.deckkraft};white-space:pre">${esc([a.marke !== false ? '@' + AUFBAU.handle.marke : '', a.handle ? '@' + a.handle : ''].filter(Boolean).join('\n'))}</div>`));
       await page.evaluate(() => document.fonts.ready);
       await page.screenshot({ path: ziel, omitBackground: true, type: 'png' });
     };
