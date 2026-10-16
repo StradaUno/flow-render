@@ -63,7 +63,7 @@ export async function bildErzeugen({ prompt, vorlagen, modell, ort = 'global', f
 }
 
 /** Bildprüfung mit einem günstigen Modell: gleiche Figur? Schrift? abgeschnitten? oberes Drittel frei? Szene passt? */
-export async function bildPruefen({ bild, vorlage, szene, modell, ort = 'global', modus = 'szene' }) {
+export async function bildPruefen({ bild, vorlage, szene, modell, ort = 'global', modus = 'szene', einfarbig = false }) {
   const j = await aufruf(modell, ort, {
     contents: [{ role: 'user', parts: [
       { text: 'Bild 1 ist die Vorlage der Figur, Bild 2 das neue Bild.' }, vorlage,
@@ -71,7 +71,7 @@ export async function bildPruefen({ bild, vorlage, szene, modell, ort = 'global'
       { text: modus === 'figur'
         // Hauptbild/Figurenblatt: nur Figur und Schrift prüfen (Merkmal und Haltung ändern sich absichtlich)
         ? `Prüfe Bild 2. ok=false, wenn EINES zutrifft: (1) Es ist eine andere Figur als in Bild 1 (andere Tierart/Typ, anderes Gesicht oder ganz andere Farben). Neue Accessoires, Kleidung, Hintergrundfarbe oder Ausdruck sind gewollt und OK. (2) Im Bild steht Schrift, Buchstaben oder Zahlen. (3) Die Figur ist abgeschnitten oder hat grobe Körperfehler. ${szene ? `Hinweis zum Auftrag: ${szene}. ` : ''}Antworte nur als JSON mit ok und einem kurzen grund auf Deutsch.`
-        : `Prüfe Bild 2 streng. ok=false, wenn EINES zutrifft: (1) Es ist nicht dieselbe Figur wie in Bild 1 (Tierart/Typ, Farben, Gesicht, Erkennungsmerkmal). (2) Im Bild steht Schrift, Buchstaben oder Zahlen. (3) Die Figur ist abgeschnitten oder hat Körperfehler. (4) Das obere Drittel ist nicht ruhig und frei. (5) Es ist eine völlig andere Situation als: „${szene}“. Kleine Abweichungen bei Details, Haltung, Kleidung im Bildausschnitt oder Gegenständen sind OK und kein Grund für ok=false. Antworte nur als JSON mit ok und einem kurzen grund auf Deutsch.` },
+        : `Prüfe Bild 2 streng. ok=false, wenn EINES zutrifft: (1) Es ist nicht dieselbe Figur wie in Bild 1 (Tierart/Typ, Farben, Gesicht, Erkennungsmerkmal). (2) Im Bild steht Schrift, Buchstaben oder Zahlen. (3) Die Figur ist abgeschnitten oder hat Körperfehler. (4) Das obere Drittel ist nicht ruhig und frei. (5) Es ist eine völlig andere Situation als: „${szene}“.${einfarbig ? ' (6) Der Hintergrund ist nicht einfarbig und flach (es sind Raum, Wände, Boden, Landschaft oder Möbel als Umgebung zu sehen).' : ''} Kleine Abweichungen bei Details, Haltung, Kleidung im Bildausschnitt oder Gegenständen sind OK und kein Grund für ok=false. Antworte nur als JSON mit ok und einem kurzen grund auf Deutsch.` },
     ] }],
     generationConfig: {
       responseMimeType: 'application/json',

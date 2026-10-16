@@ -4,7 +4,7 @@ import { promisify } from 'node:util';
 import { writeFile, readFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { schriftStufe, textflaechePng } from './textflaeche.mjs';
+import { textflaechenBauen } from './textflaeche.mjs';
 
 const ausfuehren = promisify(execFile);
 
@@ -33,14 +33,9 @@ export async function reelBauen(browser, a) {
     // Szene (text1) steht von Anfang an; ab wechsel_s kommt die Pointe (text2) darunter dazu
     const t2 = (a.text2 ?? '').trim();
     const wechsel = t2 ? Math.min(Math.max(a.wechsel_s || 3, 1), L - 1) : L;
-    const stufe = schriftStufe(a.text1, t2, a.ruhig_ab ?? 18);
-    const basis = { stil: a.stil, texthoehe: a.texthoehe, breite: B, hoehe: H, ...stufe, unterkante: 0.42 };
-    if (t2) {
-      const schrift = await textflaechePng(browser, { ...basis, text: `${a.text1}\n\n${t2}` }, join(dir, 't2.png'));
-      await textflaechePng(browser, { ...basis, schrift, unterkante: 0, text: a.text1 }, join(dir, 't1.png'));
-    } else {
-      await textflaechePng(browser, { ...basis, text: a.text1 }, join(dir, 't1.png'));
-    }
+    // Textaufbau wie Pupazzomio: Größe/Lage aus dem vollen Text, Szene allein an derselben Stelle
+    const schrift = a.schrift ?? { familie: 'Poppins', kurz: 700, lang: 500 };
+    await textflaechenBauen(browser, { text1: a.text1, text2: t2, stil: a.stil, schrift, handle: a.handle ?? null }, dir);
 
     const args = ['-y', '-loglevel', 'error', '-loop', '1', '-framerate', String(fps), '-i', join(dir, 'bild.jpg'), '-loop', '1', '-i', join(dir, 't1.png')];
     if (t2) args.push('-loop', '1', '-i', join(dir, 't2.png'));
@@ -51,9 +46,10 @@ export async function reelBauen(browser, a) {
     // Zoom: weich hinein bis zur Hälfte der Laufzeit, dann zurück → erstes = letztes Bild (Loop)
     // zoom_raus: beginnt nah und fährt erst heraus (Abwechslung bei wiederholten Bildern)
     const welle = `(1-cos(2*PI*on/${frames}))/2`;
+    const my = Number(R.zoom_mitte_y ?? 0.5).toFixed(3); // Zoom-Mitte auf Höhe der Figur
     const z = a.zoom_raus ? `${zmax.toFixed(4)}-${(zmax - 1).toFixed(4)}*${welle}` : `1+${(zmax - 1).toFixed(4)}*${welle}`;
     let f = `[0:v]${a.spiegeln ? 'hflip,' : ''}scale=${B * 2}:${H * 2}:force_original_aspect_ratio=increase,crop=${B * 2}:${H * 2},` +
-      `zoompan=z='${z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${B}x${H}:fps=${fps},setsar=1[bg];` +
+      `zoompan=z='${z}':x='iw/2-(iw/zoom/2)':y='${my}*ih-(ih/zoom*${my})':d=1:s=${B}x${H}:fps=${fps},setsar=1[bg];` +
       `[bg][1:v]overlay=0:0:enable='lt(t,${wechsel})'[v1]`;
     if (t2) f += `;[v1][2:v]overlay=0:0:enable='gte(t,${wechsel})'[v]`;
     else f += `;[v1]null[v]`;

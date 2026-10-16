@@ -1,63 +1,49 @@
-// Textfläche als transparentes PNG (1080×1920) – gleiche Gestaltung wie die Live-Vorschau der App.
-// Maße in Prozent der Breite, damit Vorschau (klein) und Reel (groß) identisch aussehen.
+// Textflächen als transparente PNGs (1080×1920) im Aufbau wie Pupazzomio (render/layout.mjs) – gleich wie die Live-Vorschau der App.
+// t1.png = nur Szene, t2.png = Szene + Pointe (gleiche Schriftgröße und Oberkante). Optional @handle klein unter der Figur.
+import { readFile } from 'node:fs/promises';
+import { AUFBAU, B, H } from './layout.mjs';
 
-export const MASSE = { schrift: 5.74, zeile: 1.22, padY: 2.6, padX: 3.3, radius: 2.2, maxBreite: 88, rand: 0.28 };
-// Ruhiger Aufbau für Szene → Pointe (wie Pupazzomio): kleiner, schlichter, mehr Zeilen. Gleiche Regel wie MemeVorschau.tsx
-export const RUHIG = { schrift: 4.6, zeile: 1.3, gewicht: 600 };
-export const KLEIN = { schrift: 4.0, zeile: 1.28, gewicht: 600 };
-const woerter = (t) => String(t ?? '').trim().split(/\s+/).filter(Boolean).length;
-/** Schriftstufe aus der Wortzahl: normal · ruhig (ab X Wörtern in der Szene) · klein (über 32 Wörter gesamt) */
-export function schriftStufe(text1, text2, abWoertern = 18) {
-  const n1 = woerter(text1), n = n1 + woerter(text2);
-  if (n > 32) return { ...KLEIN, stufe: 'klein' };
-  if (n1 >= abWoertern || n > 22) return { ...RUHIG, stufe: 'ruhig' };
-  return { schrift: MASSE.schrift, zeile: MASSE.zeile, gewicht: 700, stufe: 'normal' };
+const FONTS = 'https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Nunito:wght@600;800&family=Inter:wght@500;700&display=block';
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function seite(fontFamilie) {
+  return `<!doctype html><html><head><meta charset="utf-8"><link href="${FONTS}" rel="stylesheet">
+<style>html,body{margin:0;width:${B}px;height:${H}px;background:transparent;overflow:hidden}
+.box{position:absolute;left:50%;transform:translateX(-50%);box-sizing:border-box;text-align:center;white-space:pre;font-family:'${fontFamilie}',sans-serif}
+.handle{position:absolute;left:0;right:0;text-align:center;font-family:'Poppins',sans-serif;font-weight:500}</style>
+</head><body><span style="font-family:'${fontFamilie}';font-weight:500">.</span><span style="font-family:'${fontFamilie}';font-weight:700">.</span><span style="font-family:'${fontFamilie}';font-weight:800">.</span></body></html>`;
 }
 
-function esc(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-export function textflaecheHtml({ text, stil, texthoehe, breite = 1080, hoehe = 1920, schrift = MASSE.schrift, zeile = MASSE.zeile, gewicht = 700 }) {
-  const px = (p) => (p * breite) / 100;
-  const rand = stil.rand ? `${px(MASSE.rand)}px solid ${stil.rand}` : 'none';
-  // Stil ohne Fläche: weicher Schatten statt Box
-  const ohneFlaeche = stil.box === 'transparent' || !!stil.schatten;
-  const schatten = ohneFlaeche
-    ? `text-shadow:0 ${px(0.3)}px ${px(1.6)}px ${stil.schatten ?? 'rgba(0,0,0,.55)'},0 0 ${px(0.6)}px ${stil.schatten ?? 'rgba(0,0,0,.55)'};box-shadow:none;`
-    : `box-shadow:0 ${px(0.5)}px ${px(2)}px rgba(0,0,0,.14);`;
-  return `<!doctype html><html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=block" rel="stylesheet">
-<style>
-html,body{margin:0;width:${breite}px;height:${hoehe}px;background:transparent;overflow:hidden}
-.box{position:absolute;left:50%;transform:translateX(-50%);top:${(texthoehe * 100).toFixed(2)}%;
-  max-width:${MASSE.maxBreite}%;width:max-content;box-sizing:border-box;
-  background:${ohneFlaeche ? 'transparent' : stil.box};color:${stil.fg};border:${rand};border-radius:${px(MASSE.radius)}px;
-  padding:${px(MASSE.padY)}px ${px(MASSE.padX)}px;font-family:Inter,sans-serif;font-weight:${gewicht};
-  font-size:${px(schrift)}px;line-height:${zeile};text-align:center;letter-spacing:-0.01em;white-space:pre-line;
-  ${schatten}overflow-wrap:break-word}
-</style></head><body><div class="box">${esc(text)}</div></body></html>`;
-}
-
-export async function textflaechePng(browser, opts, ziel) {
+/** a: { text1, text2, stil, schrift: {familie, kurz, lang}, handle? } → { t1, t2 } (Dateipfade) */
+export async function textflaechenBauen(browser, a, dir) {
   const page = await browser.newPage();
-  let fs = null;
   try {
-    await page.setViewport({ width: opts.breite ?? 1080, height: opts.hoehe ?? 1920, deviceScaleFactor: 1 });
-    await page.setContent(textflaecheHtml(opts), { waitUntil: 'networkidle0', timeout: 30000 });
+    await page.setViewport({ width: B, height: H, deviceScaleFactor: 1 });
+    await page.setContent(seite(a.schrift.familie), { waitUntil: 'networkidle0', timeout: 30000 });
     await page.evaluate(() => document.fonts.ready);
-    // Sicherheitsnetz: ragt der Text über die obere Textfläche hinaus, Schrift schrittweise verkleinern
-    if (opts.unterkante) {
-      fs = await page.evaluate((grenze) => {
-        const box = document.querySelector('.box');
-        let f = parseFloat(getComputedStyle(box).fontSize);
-        for (let i = 0; i < 8 && box.getBoundingClientRect().bottom > grenze; i++) { f *= 0.93; box.style.fontSize = f + 'px'; }
-        return f;
-      }, opts.unterkante * (opts.hoehe ?? 1920));
-    }
-    await page.screenshot({ path: ziel, omitBackground: true, type: 'png' });
-    // tatsächliche Schriftgröße in % der Breite (damit die Szene allein gleich groß bleibt)
-    return fs ? (fs * 100) / (opts.breite ?? 1080) : (opts.schrift ?? MASSE.schrift);
+    // Layout-Code in die Seite laden und dort mit echter Schrift messen
+    const code = (await readFile(new URL('./layout.mjs', import.meta.url), 'utf8')).replace(/^export /gm, '');
+    await page.addScriptTag({ content: `${code}\nwindow.textAufbau = textAufbau;` });
+    const lay = await page.evaluate((t1, t2, schrift) => {
+      const c = document.createElement('canvas').getContext('2d');
+      const messen = (text, px, gewicht) => { c.font = `${gewicht} ${px}px '${schrift.familie}', sans-serif`; return c.measureText(text).width; };
+      return window.textAufbau(t1, t2, schrift, messen);
+    }, a.text1, a.text2 ?? '', a.schrift);
+
+    const s = a.stil;
+    const ohneFlaeche = s.box === 'transparent' || !!s.schatten;
+    const schatten = ohneFlaeche ? `text-shadow:0 2px 14px ${s.schatten ?? 'rgba(0,0,0,.45)'};` : '';
+    const box = ohneFlaeche ? 'padding:0' : `background:${s.box};padding:28px 36px;border-radius:24px;${s.rand ? `border:3px solid ${s.rand};` : ''}box-shadow:0 6px 22px rgba(0,0,0,.14)`;
+    const zeichnen = async (zeilen, ziel) => {
+      await page.evaluate((html) => { document.body.innerHTML = html; }, `<div class="box" style="top:${lay.top}px;font-size:${lay.px}px;line-height:${lay.zeile};font-weight:${lay.gewicht};color:${s.fg};${schatten}${box}">${esc(zeilen.join('\n'))}</div>`
+        + (a.handle ? `<div class="handle" style="top:${AUFBAU.handle.y * H}px;font-size:${AUFBAU.handle.px}px;color:${AUFBAU.handle.farbe}">@${esc(a.handle)}</div>` : ''));
+      await page.evaluate(() => document.fonts.ready);
+      await page.screenshot({ path: ziel, omitBackground: true, type: 'png' });
+    };
+    const t1 = `${dir}/t1.png`, t2 = `${dir}/t2.png`;
+    await zeichnen(lay.zeilen1, t1);
+    if ((a.text2 ?? '').trim()) await zeichnen(lay.zeilen, t2);
+    return { t1, t2: (a.text2 ?? '').trim() ? t2 : null };
   } finally {
     await page.close();
   }

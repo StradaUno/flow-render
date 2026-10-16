@@ -27,7 +27,7 @@ export async function bildBauen(a) {
     catch (e) { protokoll.push({ versuch: v, erzeugt: false, grund: String(e?.message ?? e).slice(0, 200) }); continue; }
     // Ohne jede Vorlage (realistischer Avatar ohne Vorschau) gibt es nichts zu vergleichen
     const p = !pruefVorlage ? { ok: true, grund: 'ohne Vorlage' }
-      : await bildPruefen({ bild: kandidat, vorlage: pruefVorlage, szene: a.szene_text, modell: a.pruef_modell, ort: a.ort, modus: a.pruef_modus ?? 'szene' })
+      : await bildPruefen({ bild: kandidat, vorlage: pruefVorlage, szene: a.szene_text, modell: a.pruef_modell, ort: a.ort, modus: a.pruef_modus ?? 'szene', einfarbig: !!a.einfarbig })
         .catch((e) => ({ ok: false, grund: `Prüfung fehlgeschlagen: ${String(e?.message ?? e).slice(0, 150)}` }));
     protokoll.push({ versuch: v, erzeugt: true, ok: !!p.ok, grund: p.grund ?? '' });
     if (p.ok) { roh = kandidat; break; }

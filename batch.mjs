@@ -71,7 +71,7 @@ export async function batchHolen(a) {
     const roh = bilder.get(e.prompt);
     if (!roh) { ergebnisse.push({ id: e.id, ok: false, protokoll: [{ versuch: 1, erzeugt: false, grund: 'kein Bild im Batch' }] }); continue; }
     const vorlage = await bildTeil(e.pruef_vorlage_url);
-    const p = await bildPruefen({ bild: roh, vorlage, szene: e.szene_text, modell: a.pruef_modell, ort: a.ort, modus: e.pruef_modus ?? 'szene' })
+    const p = await bildPruefen({ bild: roh, vorlage, szene: e.szene_text, modell: a.pruef_modell, ort: a.ort, modus: e.pruef_modus ?? 'szene', einfarbig: !!e.einfarbig })
       .catch((x) => ({ ok: false, grund: `Prüfung fehlgeschlagen: ${String(x?.message ?? x).slice(0, 150)}` }));
     const protokoll = [{ versuch: 1, erzeugt: true, batch: true, ok: !!p.ok, grund: p.grund ?? '' }];
     if (!p.ok) { ergebnisse.push({ id: e.id, ok: false, protokoll }); continue; }

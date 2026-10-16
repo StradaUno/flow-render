@@ -26,7 +26,7 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PFAD
 const t0 = Date.now();
 await reelBauen(browser, {
   bild_url: 'http://localhost:8787/bild.jpg', musik_url: 'http://localhost:8787/musik.mp3', musik_start: 2,
-  text1: 'Montag. Ich bin da. Körperlich.', text2: 'Geistig? Kommt Mittwoch.', wechsel_s: 3, texthoehe: 0.08,
+  text1: 'Montag. Ich bin da. Körperlich.', text2: 'Geistig? Kommt Mittwoch.', wechsel_s: 3, texthoehe: 0.08, handle: 'pipo.memes',
   stil: { k: 'klar', box: '#FFFFFF', fg: '#18181B', rand: '#E7E5E4' },
   reel: { breite: 1080, hoehe: 1920, laenge_s: 7, zoom_max: 1.15, fps: 30, ausblenden_s: 0.6 },
   upload: { mp4: { signedUrl: 'http://localhost:8787/reel.mp4', pfad: 'reel.mp4' }, jpg: { signedUrl: 'http://localhost:8787/vorschau.jpg', pfad: 'vorschau.jpg' } },
