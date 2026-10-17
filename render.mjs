@@ -58,7 +58,8 @@ export async function reelBauen(browser, a) {
     const z = a.zoom_raus ? `${zmax.toFixed(4)}-${(zmax - 1).toFixed(4)}*${welle}` : `1+${(zmax - 1).toFixed(4)}*${welle}`;
     let f = `[0:v]${a.spiegeln ? 'hflip,' : ''}${einpassen}${schieben}` +
       `zoompan=z='${z}':x='iw/2-(iw/zoom/2)':y='${my}*ih-(ih/zoom*${my})':d=1:s=${B}x${H}:fps=${fps},setsar=1[bg];` +
-      `[bg][1:v]overlay=0:0:enable='lt(t,${wechsel})'[v1]`;
+      // Ohne Pointe bleibt der Text bis zum letzten Bild (enable mit t < Länge schaltete das letzte Bild ab)
+      `[bg][1:v]overlay=0:0${t2 ? `:enable='lt(t,${wechsel})'` : ''}[v1]`;
     if (t2) f += `;[v1][2:v]overlay=0:0:enable='gte(t,${wechsel})'[v]`;
     else f += `;[v1]null[v]`;
     f += `;[${audioIdx}:a]afade=t=in:st=0:d=0.05,afade=t=out:st=${(L - R.ausblenden_s).toFixed(2)}:d=${R.ausblenden_s},apad[a]`;
